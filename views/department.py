@@ -6,22 +6,25 @@ from models.employee import Employee
 from components.show_notification import show_notification
 from components.create_modal import create_modal
 from views.PageManager import PageManager
+from valid.valids import validate_required
 
 class DepartmentManager(PageManager):
     title = "部署管理"
-    columns = ("ID", "名前")
-    model = Department
+    columns = ("ID", "部署名")
+    validation_rules = {
+        "部署名": [validate_required],
+    }
 
     def refresh(self, search_text, tree):
         for row in tree.get_children():
             tree.delete(row)
         query = session.query(Department).filter(Department.name.like(f"%{search_text}%"))
-        for dept in query.all():
-            tree.insert("", "end", values=(dept.id, dept.name))
+        for department in query.all():
+            tree.insert("", "end", values=(department.id, department.name))
 
     def register(self, values):
         try:
-            new_department = Department(name=values["名前"])
+            new_department = Department(name=values["部署名"])
             session.add(new_department)
             session.commit()
             self.refresh("", self.tree)
@@ -35,8 +38,8 @@ class DepartmentManager(PageManager):
 
         def update_department(values):
             try:
-                dept = session.query(Department).filter_by(id=department_id).first()
-                dept.name = values["名前"]
+                department = session.query(Department).filter_by(id=department_id).first()
+                department.name = values["部署名"]
                 session.commit()
                 self.refresh("", self.tree)
                 show_notification(self.root, "更新されました")
@@ -44,7 +47,8 @@ class DepartmentManager(PageManager):
                 session.rollback()
                 show_notification(self.root, f"予期しないエラー: {e}")
 
-        create_modal(self.root, "部署編集", fields={"名前": name}, on_confirm=update_department)
+        fields={"部署名": name}
+        create_modal(self.root, "部署編集", fields, self.validation_rules, on_confirm=update_department)
 
     def delete(self, item_id):
         linked_employees = session.query(Employee).filter_by(department_id=item_id).count()
@@ -59,7 +63,8 @@ class DepartmentManager(PageManager):
             show_notification(self.root, "部署が削除されました")
 
     def show_register_modal(self):
-        create_modal(self.root, "部署登録", {"名前": ""}, on_confirm=self.register)
+        fields={"部署名": ""}
+        create_modal(self.root, "部署登録", fields, self.validation_rules, on_confirm=self.register)
 
     def show_edit_modal(self, selected_item):
         self.edit(selected_item)

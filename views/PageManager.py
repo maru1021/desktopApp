@@ -13,11 +13,11 @@ class PageManager:
         # サブクラスで定義するクラス変数
         self.title = getattr(self, "title", "管理画面")
         self.columns = getattr(self, "columns", ())
-        self.model = getattr(self, "model", None)
 
         self.tree = None
         self.search_entry = None
         self.register_button = None
+        self.validation_rules = {}
 
     # ページのセットアップ
     def setup_page(self):

@@ -1,21 +1,16 @@
-import re
-from tkinter import ttk, messagebox
 import tkinter as tk
-from db_access import session
-from models.department import Department
+from tkinter import ttk
 
-# バリデーション関数
-def validate_inputs(name, email=None, parent=None):
-    if not name:
-        messagebox.showwarning("入力エラー", "名前を入力してください", parent=parent)
-        return False
-    if email and not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        messagebox.showwarning("入力エラー", "有効なメールアドレスを入力してください", parent=parent)
-        return False
-    return True
+def create_modal(root, title, fields, validation_rules=None, on_confirm=None):
+    """
+    モーダルウィンドウを作成
 
-# モーダル生成（共通）
-def create_modal(root, title, fields, department_dropdown=False, on_confirm=None):
+    :param root: モーダルの親ウィンドウ
+    :param title: モーダルのタイトル
+    :param fields: フィールドとデフォルト値の辞書
+    :param validation_rules: バリデーションルールの辞書
+    :param on_confirm: 確定ボタンが押された際のコールバック関数
+    """
     modal = tk.Toplevel(root)
     modal.title(title)
     modal.geometry("300x300")
@@ -23,13 +18,14 @@ def create_modal(root, title, fields, department_dropdown=False, on_confirm=None
     modal.grab_set()
 
     entries = {}
+
     for field, default_value in fields.items():
         tk.Label(modal, text=f"{field}:").pack(pady=5)
-        if department_dropdown and field == "部署":
-            # 部署選択用ドロップダウンを作成
-            departments = [d.name for d in session.query(Department).all()]
-            combo = ttk.Combobox(modal, values=departments, state="readonly")
-            combo.set(default_value)
+
+        # セレクトボックス（リストの場合）
+        if isinstance(default_value, list):
+            combo = ttk.Combobox(modal, values=default_value, state="readonly")
+            combo.set(default_value[0] if default_value else "")
             combo.pack(pady=5, fill="x", padx=10)
             entries[field] = combo
         else:
@@ -39,11 +35,19 @@ def create_modal(root, title, fields, department_dropdown=False, on_confirm=None
             entries[field] = entry
 
     def confirm_action():
+        """入力データをバリデーションし、成功時にコールバックを実行"""
         values = {field: entry.get() for field, entry in entries.items()}
-        if all(validate_inputs(values.get("名前"), values.get("メールアドレス"), parent=modal) for field in fields):
-            if on_confirm:
-                on_confirm(values)
-            modal.destroy()
+
+        # バリデーションを適用
+        if validation_rules:
+            for field, rules in validation_rules.items():
+                for rule in rules:
+                    if not rule(values.get(field), parent=modal):
+                        return  # バリデーションエラー時は処理を中断
+
+        if on_confirm:
+            on_confirm(values)
+        modal.destroy()
 
     modal.bind("<Return>", lambda event: confirm_action())
     tk.Button(modal, text="保存", command=confirm_action).pack(pady=10)

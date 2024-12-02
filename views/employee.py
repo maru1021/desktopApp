@@ -6,11 +6,15 @@ from models.employee import Employee
 from components.show_notification import show_notification
 from components.create_modal import create_modal
 from views.PageManager import PageManager
+from valid.valids import validate_required, validate_email
 
 class EmployeeManager(PageManager):
     title = "従業員管理"
     columns = ("ID", "名前", "メールアドレス", "部署")
-    model = Employee
+    validation_rules = {
+        "名前": [validate_required],
+        "メールアドレス": [validate_required, validate_email]
+    }
 
     def refresh(self, search_text, tree):
         for row in tree.get_children():
@@ -44,10 +48,10 @@ class EmployeeManager(PageManager):
 
         def update_employee(values):
             try:
-                emp = session.query(Employee).filter_by(id=employee_id).first()
-                emp.name = values["名前"]
-                emp.email = values["メールアドレス"]
-                emp.department = session.query(Department).filter_by(name=values.get("部署")).first()
+                employee = session.query(Employee).filter_by(id=employee_id).first()
+                employee.name = values["名前"]
+                employee.email = values["メールアドレス"]
+                employee.department = session.query(Department).filter_by(name=values.get("部署")).first()
                 session.commit()
                 self.refresh("", self.tree)
                 show_notification(self.root, "更新されました")
@@ -58,8 +62,13 @@ class EmployeeManager(PageManager):
                 session.rollback()
                 show_notification(self.root, f"予期しないエラー: {e}")
 
-        create_modal(self.root, "従業員編集", fields={"名前": name, "メールアドレス": email, "部署": department_name},
-                     department_dropdown=True, on_confirm=update_employee)
+        fields={
+            "名前": name,
+            "メールアドレス": email,
+            "部署": department_name
+        }
+
+        create_modal(self.root, "従業員編集", fields, self.validation_rules, on_confirm=update_employee)
 
     def delete(self, item_id):
         if messagebox.askyesno("確認", "この従業員を削除しますか？", parent=self.root):
@@ -69,8 +78,15 @@ class EmployeeManager(PageManager):
             show_notification(self.root, "削除されました")
 
     def show_register_modal(self):
-        create_modal(self.root, "従業員登録", {"名前": "", "メールアドレス": "", "部署": ""},
-                     department_dropdown=True, on_confirm=self.register)
+        departments = [d.name for d in session.query(Department).all()]
+
+        fields = {
+            "名前": "",
+            "メールアドレス": "",
+            "部署": departments
+        }
+
+        create_modal(self.root, "従業員登録", fields, self.validation_rules, on_confirm=self.register)
 
     def show_edit_modal(self, selected_item):
         self.edit(selected_item)
