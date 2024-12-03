@@ -2,15 +2,6 @@ import tkinter as tk
 from tkinter import ttk
 
 def create_modal(root, title, fields, validation_rules=None, on_confirm=None):
-    """
-    モーダルウィンドウを作成
-
-    :param root: モーダルの親ウィンドウ
-    :param title: モーダルのタイトル
-    :param fields: フィールドとデフォルト値の辞書
-    :param validation_rules: バリデーションルールの辞書
-    :param on_confirm: 確定ボタンが押された際のコールバック関数
-    """
     modal = tk.Toplevel(root)
     modal.title(title)
     modal.geometry("300x300")
@@ -34,16 +25,15 @@ def create_modal(root, title, fields, validation_rules=None, on_confirm=None):
             entry.pack(pady=5, fill="x", padx=10)
             entries[field] = entry
 
+    # バリデーション、クリック時のメソッドの実行
     def confirm_action():
-        """入力データをバリデーションし、成功時にコールバックを実行"""
         values = {field: entry.get() for field, entry in entries.items()}
 
-        # バリデーションを適用
         if validation_rules:
             for field, rules in validation_rules.items():
                 for rule in rules:
                     if not rule(values.get(field), parent=modal):
-                        return  # バリデーションエラー時は処理を中断
+                        return
 
         if on_confirm:
             on_confirm(values)
